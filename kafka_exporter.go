@@ -12,6 +12,10 @@ import (
 	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
+	"github.com/prometheus/common/config"
+	"crypto/tls"
+	"io/ioutil"
+	"crypto/x509"
 )
 
 const (
@@ -94,15 +98,48 @@ type Exporter struct {
 	offset      map[string]map[int32]int64
 }
 
-type kafkaOpts struct {
+type SASLOpts struct {
 	uri          []string
 	useSASL      bool
 	userSASL     string
 	userPASSWORD string
 }
 
+type TLSOpts struct {
+	uri 		[]string
+	useTLS		bool
+	certFile	string
+	keyFile 	string
+	caFile  	string
+}
+
+func createTlsConfiguration() (t *tls.Config) {
+	if *certFile != "" && *keyFile != "" && *caFile != "" {
+		cert, err := tls.LoadX509KeyPair(*certFile, *keyFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		caCert, err := ioutil.ReadFile(*caFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+
+		t = &tls.Config{
+			Certificates:       []tls.Certificate{cert},
+			RootCAs:            caCertPool,
+			InsecureSkipVerify: *verifySsl,
+		}
+	}
+	// will be nil by default if nothing is provided
+	return t
+}
+
 // NewExporter returns an initialized Exporter.
-func NewExporter(opts kafkaOpts, topicFilter string) (*Exporter, error) {
+func NewExporter(opts SASLOpts, topicFilter string) (*Exporter, error) {
 	config := sarama.NewConfig()
 
 	if opts.useSASL {
@@ -114,6 +151,14 @@ func NewExporter(opts kafkaOpts, topicFilter string) (*Exporter, error) {
 
 		if opts.userPASSWORD != "" {
 			config.Net.SASL.Password = opts.userPASSWORD
+		}
+	}
+
+	if opts.useTLS {
+		tlsConfig := createTlsConfiguration()
+		if tlsConfig != nil {
+			config.Net.TLS.Enable = true
+			config.Net.TLS.Config = tlsConfig
 		}
 	}
 
@@ -326,12 +371,17 @@ func main() {
 		metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 		topicFilter   = kingpin.Flag("topic.filter", "Regex that determines which topics to collect.").Default(".*").String()
 
-		opts = kafkaOpts{}
+		opts = SASLOpts{}
 	)
 	kingpin.Flag("kafka.server", "Address (host:port) of Kafka server.").Default("kafka:9092").StringsVar(&opts.uri)
 	kingpin.Flag("sasl.enabled", "Connect using SASL/PLAIN").Default("false").BoolVar(&opts.useSASL)
 	kingpin.Flag("sasl.username", "SASL user name").Default("").StringVar(&opts.userSASL)
 	kingpin.Flag("sasl.password", "SASL user password").Default("").StringVar(&opts.userPASSWORD)
+	kingpin.Flag("tls.enabled", "Connect using TLS").Default("false").BoolVar(&opts.useTLS)
+	kingpin.Flag("certFile", "Cert File").Default("").StringVar(&opts.certFile)
+	kingpin.Flag("keyFile", "Key File").Default("").StringVar(&opts.keyFile)
+	kingpin.Flag("caFile", "CA File").Default("").StringVar(&opts.caFile)
+
 
 	log.AddFlags(kingpin.CommandLine)
 	kingpin.Version(version.Print("kafka_exporter"))
