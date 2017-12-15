@@ -2,20 +2,19 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"regexp"
 	"strconv"
 
 	"github.com/Shopify/sarama"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
-	"gopkg.in/alecthomas/kingpin.v2"
-	"github.com/prometheus/common/config"
 	"crypto/tls"
 	"io/ioutil"
 	"crypto/x509"
+	"gopkg.in/alecthomas/kingpin.v2"
+	"net/http"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const (
@@ -111,16 +110,17 @@ type TLSOpts struct {
 	certFile	string
 	keyFile 	string
 	caFile  	string
-}
+	verifySsl   bool
+	}
 
-func createTlsConfiguration() (t *tls.Config) {
-	if *certFile != "" && *keyFile != "" && *caFile != "" {
-		cert, err := tls.LoadX509KeyPair(*certFile, *keyFile)
+func createTlsConfiguration(opts TLSOpts) (t *tls.Config) {
+	if opts.certFile != "" && opts.keyFile != "" && opts.caFile != "" {
+		cert, err := tls.LoadX509KeyPair(opts.certFile, opts.keyFile)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		caCert, err := ioutil.ReadFile(*caFile)
+		caCert, err := ioutil.ReadFile(opts.caFile)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -131,7 +131,7 @@ func createTlsConfiguration() (t *tls.Config) {
 		t = &tls.Config{
 			Certificates:       []tls.Certificate{cert},
 			RootCAs:            caCertPool,
-			InsecureSkipVerify: *verifySsl,
+			InsecureSkipVerify: opts.verifySsl,
 		}
 	}
 	// will be nil by default if nothing is provided
@@ -139,7 +139,7 @@ func createTlsConfiguration() (t *tls.Config) {
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(opts SASLOpts, topicFilter string) (*Exporter, error) {
+/*func NewExporterSASL(opts SASLOpts, topicFilter string) (*Exporter, error) {
 	config := sarama.NewConfig()
 
 	if opts.useSASL {
@@ -154,8 +154,27 @@ func NewExporter(opts SASLOpts, topicFilter string) (*Exporter, error) {
 		}
 	}
 
+	client, err := sarama.NewClient(opts.uri, config)
+
+	if err != nil {
+		fmt.Println("Error Init Kafka Client")
+		panic(err)
+	}
+	fmt.Println("Done Init Clients")
+
+	// Init our exporter.
+	return &Exporter{
+		client:      client,
+		topicFilter: regexp.MustCompile(topicFilter),
+		offset:      make(map[string]map[int32]int64),
+	}, nil
+}
+*/
+func NewExporter(opts TLSOpts, topicFilter string) (*Exporter, error) {
+	config := sarama.NewConfig()
+
 	if opts.useTLS {
-		tlsConfig := createTlsConfiguration()
+		tlsConfig := createTlsConfiguration(opts)
 		if tlsConfig != nil {
 			config.Net.TLS.Enable = true
 			config.Net.TLS.Config = tlsConfig
@@ -177,6 +196,7 @@ func NewExporter(opts SASLOpts, topicFilter string) (*Exporter, error) {
 		offset:      make(map[string]map[int32]int64),
 	}, nil
 }
+
 
 // Describe describes all the metrics ever exported by the Kafka exporter. It
 // implements prometheus.Collector.
@@ -371,17 +391,15 @@ func main() {
 		metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 		topicFilter   = kingpin.Flag("topic.filter", "Regex that determines which topics to collect.").Default(".*").String()
 
-		opts = SASLOpts{}
+		opts = TLSOpts{}
 	)
-	kingpin.Flag("kafka.server", "Address (host:port) of Kafka server.").Default("kafka:9092").StringsVar(&opts.uri)
-	kingpin.Flag("sasl.enabled", "Connect using SASL/PLAIN").Default("false").BoolVar(&opts.useSASL)
-	kingpin.Flag("sasl.username", "SASL user name").Default("").StringVar(&opts.userSASL)
-	kingpin.Flag("sasl.password", "SASL user password").Default("").StringVar(&opts.userPASSWORD)
 	kingpin.Flag("tls.enabled", "Connect using TLS").Default("false").BoolVar(&opts.useTLS)
 	kingpin.Flag("certFile", "Cert File").Default("").StringVar(&opts.certFile)
 	kingpin.Flag("keyFile", "Key File").Default("").StringVar(&opts.keyFile)
 	kingpin.Flag("caFile", "CA File").Default("").StringVar(&opts.caFile)
 
+
+	kingpin.Flag("kafka.server", "Address (host:port) of Kafka server.").Default("kafka:9092").StringsVar(&opts.uri)
 
 	log.AddFlags(kingpin.CommandLine)
 	kingpin.Version(version.Print("kafka_exporter"))
