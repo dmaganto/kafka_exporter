@@ -154,6 +154,25 @@ func NewExporter(opts SASLOpts, topicFilter string) (*Exporter, error) {
 		}
 	}
 
+	client, err := sarama.NewClient(opts.uri, config)
+
+	if err != nil {
+		fmt.Println("Error Init Kafka Client")
+		panic(err)
+	}
+	fmt.Println("Done Init Clients")
+
+	// Init our exporter.
+	return &Exporter{
+		client:      client,
+		topicFilter: regexp.MustCompile(topicFilter),
+		offset:      make(map[string]map[int32]int64),
+	}, nil
+}
+
+func NewExporter(opts TLSOpts, topicFilter string) (*Exporter, error) {
+	config := sarama.NewConfig()
+
 	if opts.useTLS {
 		tlsConfig := createTlsConfiguration()
 		if tlsConfig != nil {
@@ -177,6 +196,7 @@ func NewExporter(opts SASLOpts, topicFilter string) (*Exporter, error) {
 		offset:      make(map[string]map[int32]int64),
 	}, nil
 }
+
 
 // Describe describes all the metrics ever exported by the Kafka exporter. It
 // implements prometheus.Collector.
