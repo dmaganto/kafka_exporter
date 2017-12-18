@@ -111,16 +111,17 @@ type TLSOpts struct {
 	certFile	string
 	keyFile 	string
 	caFile  	string
-}
+	verifySsl   bool
+	}
 
-func createTlsConfiguration() (t *tls.Config) {
-	if *certFile != "" && *keyFile != "" && *caFile != "" {
-		cert, err := tls.LoadX509KeyPair(*certFile, *keyFile)
+func createTlsConfiguration(opts TLSOpts) (t *tls.Config) {
+	if opts.certFile != "" && opts.keyFile != "" && opts.caFile != "" {
+		cert, err := tls.LoadX509KeyPair(opts.certFile, opts.keyFile)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		caCert, err := ioutil.ReadFile(*caFile)
+		caCert, err := ioutil.ReadFile(opts.caFile)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -131,7 +132,7 @@ func createTlsConfiguration() (t *tls.Config) {
 		t = &tls.Config{
 			Certificates:       []tls.Certificate{cert},
 			RootCAs:            caCertPool,
-			InsecureSkipVerify: *verifySsl,
+			InsecureSkipVerify: opts.verifySsl,
 		}
 	}
 	// will be nil by default if nothing is provided
@@ -139,7 +140,7 @@ func createTlsConfiguration() (t *tls.Config) {
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(opts SASLOpts, topicFilter string) (*Exporter, error) {
+func NewExporterSASL(opts SASLOpts, topicFilter string) (*Exporter, error) {
 	config := sarama.NewConfig()
 
 	if opts.useSASL {
@@ -170,7 +171,7 @@ func NewExporter(opts SASLOpts, topicFilter string) (*Exporter, error) {
 	}, nil
 }
 
-func NewExporter(opts TLSOpts, topicFilter string) (*Exporter, error) {
+func NewExporterTLS(opts TLSOpts, topicFilter string) (*Exporter, error) {
 	config := sarama.NewConfig()
 
 	if opts.useTLS {
@@ -386,22 +387,33 @@ func init() {
 }
 
 func main() {
+	var optsaux
+
+	if &opts.useTLS != nil {
+		optsaux = TLSOpts{}
+	} else if &opts.useSASL != nil {
+		optsaux = SALSOpts{}
+
+	}
 	var (
 		listenAddress = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9308").String()
 		metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 		topicFilter   = kingpin.Flag("topic.filter", "Regex that determines which topics to collect.").Default(".*").String()
 
-		opts = SASLOpts{}
-	)
-	kingpin.Flag("kafka.server", "Address (host:port) of Kafka server.").Default("kafka:9092").StringsVar(&opts.uri)
-	kingpin.Flag("sasl.enabled", "Connect using SASL/PLAIN").Default("false").BoolVar(&opts.useSASL)
-	kingpin.Flag("sasl.username", "SASL user name").Default("").StringVar(&opts.userSASL)
-	kingpin.Flag("sasl.password", "SASL user password").Default("").StringVar(&opts.userPASSWORD)
-	kingpin.Flag("tls.enabled", "Connect using TLS").Default("false").BoolVar(&opts.useTLS)
-	kingpin.Flag("certFile", "Cert File").Default("").StringVar(&opts.certFile)
-	kingpin.Flag("keyFile", "Key File").Default("").StringVar(&opts.keyFile)
-	kingpin.Flag("caFile", "CA File").Default("").StringVar(&opts.caFile)
 
+	)
+
+	if &opts.useTLS != nil {
+		kingpin.Flag("sasl.enabled", "Connect using SASL/PLAIN").Default("false").BoolVar(&opts.useSASL)
+		kingpin.Flag("sasl.username", "SASL user name").Default("").StringVar(&opts.userSASL)
+	} else if &opts.useSASL != nil {
+		kingpin.Flag("tls.enabled", "Connect using TLS").Default("false").BoolVar(&opts.useTLS)
+		kingpin.Flag("certFile", "Cert File").Default("").StringVar(&opts.certFile)
+		kingpin.Flag("keyFile", "Key File").Default("").StringVar(&opts.keyFile)
+		kingpin.Flag("caFile", "CA File").Default("").StringVar(&opts.caFile)
+	}ll
+
+	kingpin.Flag("kafka.server", "Address (host:port) of Kafka server.").Default("kafka:9092").StringsVar(&opts.uri)
 
 	log.AddFlags(kingpin.CommandLine)
 	kingpin.Version(version.Print("kafka_exporter"))
@@ -411,7 +423,7 @@ func main() {
 	log.Infoln("Starting kafka_exporter", version.Info())
 	log.Infoln("Build context", version.BuildContext())
 
-	exporter, err := NewExporter(opts, *topicFilter)
+	exporter, err := NewExporterTLS(opts, *topicFilter)
 	if err != nil {
 		log.Fatalln(err)
 	}
