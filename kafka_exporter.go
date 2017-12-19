@@ -2,20 +2,19 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"regexp"
 	"strconv"
 
 	"github.com/Shopify/sarama"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	//"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
-	"gopkg.in/alecthomas/kingpin.v2"
-	"github.com/prometheus/common/config"
+	//"github.com/prometheus/common/config"
 	"crypto/tls"
 	"io/ioutil"
 	"crypto/x509"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 const (
@@ -171,7 +170,7 @@ func NewExporterSASL(opts SASLOpts, topicFilter string) (*Exporter, error) {
 	}, nil
 }
 
-func NewExporterTLS(opts TLSOpts, topicFilter string) (*Exporter, error) {
+/*func NewExporterTLS(opts TLSOpts, topicFilter string) (*Exporter, error) {
 	config := sarama.NewConfig()
 
 	if opts.useTLS {
@@ -197,7 +196,7 @@ func NewExporterTLS(opts TLSOpts, topicFilter string) (*Exporter, error) {
 		offset:      make(map[string]map[int32]int64),
 	}, nil
 }
-
+*/
 
 // Describe describes all the metrics ever exported by the Kafka exporter. It
 // implements prometheus.Collector.
@@ -386,34 +385,49 @@ func init() {
 	prometheus.MustRegister(version.NewCollector("kafka_exporter"))
 }
 
-func main() {
-	var optsaux
+func CheckSec()(out string) {
+	var sasl *bool = kingpin.Flag("sasl.enabled", "Sasl Enabled").Default("false").Bool()
+	var tls *bool = kingpin.Flag("tls.enabled", "TLS Enabled").Default("false").Bool()
 
-	if &opts.useTLS != nil {
-		optsaux = TLSOpts{}
-	} else if &opts.useSASL != nil {
-		optsaux = SALSOpts{}
-
+	kingpin.Parse()
+	if (*sasl == true){
+		return "SASL"
+	}else if (*tls == true){
+		return "TLS"
+	}else {
+		return "ERROR"
 	}
+
+}
+
+func main() {
+	var secType string = CheckSec()
+/*
 	var (
 		listenAddress = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9308").String()
 		metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 		topicFilter   = kingpin.Flag("topic.filter", "Regex that determines which topics to collect.").Default(".*").String()
 
-
-	)
-
-	if &opts.useTLS != nil {
-		kingpin.Flag("sasl.enabled", "Connect using SASL/PLAIN").Default("false").BoolVar(&opts.useSASL)
+		)
+*/
+	if secType == "SASL" {
+		var opts = SASLOpts{}
+		fmt.Println("RELLENANDO SASL")
+		//kingpin.Flag("sasl.enabled", "Connect using SASL/PLAIN").Default("true").BoolVar(&opts.useSASL)
+		opts.useSASL = true
 		kingpin.Flag("sasl.username", "SASL user name").Default("").StringVar(&opts.userSASL)
-	} else if &opts.useSASL != nil {
+		kingpin.Flag("sasl.password", "SASL user password").Default("").StringVar(&opts.userPASSWORD)
+		kingpin.Parse()
+	} else if secType == "TLS" {
+		var opts = TLSOpts{}
+		fmt.Println("RELLENANDO TLS")
 		kingpin.Flag("tls.enabled", "Connect using TLS").Default("false").BoolVar(&opts.useTLS)
 		kingpin.Flag("certFile", "Cert File").Default("").StringVar(&opts.certFile)
 		kingpin.Flag("keyFile", "Key File").Default("").StringVar(&opts.keyFile)
 		kingpin.Flag("caFile", "CA File").Default("").StringVar(&opts.caFile)
-	}ll
+	}
 
-	kingpin.Flag("kafka.server", "Address (host:port) of Kafka server.").Default("kafka:9092").StringsVar(&opts.uri)
+	/*kingpin.Flag("kafka.server", "Address (host:port) of Kafka server.").Default("kafka:9092").StringsVar(&opts.uri)
 
 	log.AddFlags(kingpin.CommandLine)
 	kingpin.Version(version.Print("kafka_exporter"))
@@ -443,4 +457,5 @@ func main() {
 
 	log.Infoln("Listening on", *listenAddress)
 	log.Fatal(http.ListenAndServe(*listenAddress, nil))
+*/
 }
