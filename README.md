@@ -8,7 +8,6 @@ Table of Contents
 
 -	[Compatibility](#compatibility)
 -	[Dependency](#dependency)
--	[Download](#download)
 -	[Compile](#compile)
 	-	[build binary](#build-binary)
 	-	[build docker image](#build-docker-image)
