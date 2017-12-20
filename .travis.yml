@@ -8,6 +8,10 @@ language: go
 go:
 - 1.9
 
+branches:
+  only:
+- feature/only_tls
+
 after_success:
 - if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
   make docker;
