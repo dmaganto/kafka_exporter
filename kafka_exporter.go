@@ -406,7 +406,7 @@ func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	//log.Infoln("Starting kafka_exporter", version.Info())
+	log.Infoln("Starting kafka_exporter", version.Info())
 	//log.Infoln("Build context", version.BuildContext())
 
 	exporter, err := NewExporter(opts, *topicFilter)

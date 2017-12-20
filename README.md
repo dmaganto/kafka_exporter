@@ -1,7 +1,5 @@
-kafka_exporter
+kafka_exporter_tls
 ==============
-
-[![Build Status](https://travis-ci.org/danielqsj/kafka_exporter.svg?branch=master)](https://travis-ci.org/danielqsj/kafka_exporter)[![Docker Pulls](https://img.shields.io/docker/pulls/danielqsj/kafka-exporter.svg)](https://hub.docker.com/r/danielqsj/kafka-exporter)[![Go Report Card](https://goreportcard.com/badge/github.com/danielqsj/kafka_exporter)](https://goreportcard.com/report/github.com/danielqsj/kafka_exporter)[![Language](https://img.shields.io/badge/language-Go-red.svg)](https://github.com/danielqsj/kafka-exporter)[![GitHub release](https://img.shields.io/badge/release-0.3.0-green.svg)](https://github.com/alibaba/derrick/releases)[![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 
 Kafka exporter for Prometheus. For other metrics from Kafka, have a look at the [JMX exporter](https://github.com/prometheus/jmx_exporter).
 
@@ -10,7 +8,6 @@ Table of Contents
 
 -	[Compatibility](#compatibility)
 -	[Dependency](#dependency)
--	[Download](#download)
 -	[Compile](#compile)
 	-	[build binary](#build-binary)
 	-	[build docker image](#build-docker-image)
@@ -36,10 +33,6 @@ Dependency
 -	[Golang](https://golang.org)
 -	[Dep](https://github.com/golang/dep)
 
-Download
---------
-
-Binary can be downloaded from [Releases](https://github.com/danielqsj/kafka_exporter/releases) page.
 
 Compile
 -------
@@ -47,23 +40,24 @@ Compile
 ### build binary
 
 ```shell
-make
+go get
+go build
 ```
 
 ### build docker image
 
 ```shell
-make docker
+docker build -t kafka_exporter_tls:alpine .
 ```
 
 Docker Hub Image
 ----------------
 
 ```shell
-docker pull danielqsj/kafka-exporter:latest
+docker pull danimm85/kafka_exporter_tls:alpine
 ```
 
-It can be used directly instead of having to build the image yourself. ([Docker Hub danielqsj/kafka-exporter](https://hub.docker.com/r/danielqsj/kafka-exporter)\)
+It can be used directly instead of having to build the image yourself.
 
 Run
 ---
@@ -71,13 +65,15 @@ Run
 ### run binary
 
 ```shell
-kafka_exporter --kafka.server=kafka:9092 [--kafka.server=another-server ...]
+./kafka_exporter --tls.enabled --certFile=certs/cert.crt --keyFile=certs/cert.key --caFile=certs/ca.crt --kafka.server=broker-0001:9092
+
 ```
 
 ### run docker image
 
 ```
-docker run  -ti --rm danielqsj/kafka-exporter --kafka.server=kafka:9092 [--kafka.server=another-server ...]
+docker run -d --volume /path/to/certs:/path/to/certs:ro --volume /etc/hosts:/etc/hosts:ro --name kafka_exporter_tls kafka_exporter_tls:alpine --tls.enabled --certFile=certs/cert.crt --keyFile=certs/cert.key --caFile=certs/ca.crt --kafka.server=broker-0001:9092
+
 ```
 
 Flags
