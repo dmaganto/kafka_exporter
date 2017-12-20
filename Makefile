@@ -6,9 +6,10 @@ PREFIX                  ?= $(shell pwd)
 BIN_DIR                 ?= $(shell pwd)
 DOCKER_IMAGE_NAME       ?= kafka-exporter
 DOCKER_IMAGE_TAG        ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
-TAG 					:= $(shell echo `if [ "$(TRAVIS_BRANCH)" = "master" ] || [ "$(TRAVIS_BRANCH)" = "" ] ; then echo "latest"; else echo $(TRAVIS_BRANCH) ; fi`)
+#TAG 			:= $(shell echo `if [ "$(TRAVIS_BRANCH)" = "master" ] || [ "$(TRAVIS_BRANCH)" = "" ] ; then echo "latest"; else echo $(TRAVIS_BRANCH) ; fi`)
+TAG			?= latest
 
-all: format build test
+all: get build
 
 style:
 	@echo ">> checking code style"
@@ -25,10 +26,12 @@ format:
 vet:
 	@echo ">> vetting code"
 	@$(GO) vet $(pkgs)
-
-build: promu
+get: 
+	@echo ">> get all dependencies"
+	@$(GO) get
+build: 
 	@echo ">> building binaries"
-	@$(PROMU) build --prefix $(PREFIX)
+	@$(GO) build
 
 crossbuild: promu
 	@echo ">> crossbuilding binaries"
