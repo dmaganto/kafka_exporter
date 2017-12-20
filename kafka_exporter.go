@@ -13,7 +13,7 @@ import (
 	"io/ioutil"
 	"crypto/x509"
 	"gopkg.in/alecthomas/kingpin.v2"
-	"net/http"
+	"net/http"	
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -406,8 +406,8 @@ func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	log.Infoln("Starting kafka_exporter", version.Info())
-	log.Infoln("Build context", version.BuildContext())
+	//log.Infoln("Starting kafka_exporter", version.Info())
+	//log.Infoln("Build context", version.BuildContext())
 
 	exporter, err := NewExporter(opts, *topicFilter)
 	if err != nil {
