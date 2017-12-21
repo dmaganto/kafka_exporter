@@ -54,7 +54,7 @@ Docker Hub Image
 ----------------
 
 ```shell
-docker pull danimm85/kafka_exporter_tls:alpine
+docker pull dmaganto/kafka_exporter_tls:0.1.0alpine
 ```
 
 It can be used directly instead of having to build the image yourself.
@@ -72,8 +72,7 @@ Run
 ### run docker image
 
 ```
-docker run -d --volume /path/to/certs:/path/to/certs:ro --volume /etc/hosts:/etc/hosts:ro --name kafka_exporter_tls kafka_exporter_tls:alpine --tls.enabled --certFile=certs/cert.crt --keyFile=certs/cert.key --caFile=certs/ca.crt --kafka.server=broker-0001:9092
-
+docker run -d --volume /path/to/certs:/path/to/certs:ro --volume /etc/hosts:/etc/hosts:ro --name kafka_exporter_tls dmaganto/kafka_exporter_tls:0.1.0alpine --tls.enabled --certFile=certs/cert.crt --keyFile=certs/cert.key --caFile=certs/ca.crt --kafka.server=broker-0001:9092 
 ```
 
 Flags
